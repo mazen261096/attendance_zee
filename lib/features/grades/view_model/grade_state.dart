@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../core/utils/enums.dart';
+import '../../courses/data/models/course_member_model.dart';
 import '../data/models/grade_item_model.dart';
 import '../data/models/student_grade_model.dart';
 
@@ -35,6 +36,12 @@ class GradeState extends Equatable {
   final RequestState deleteGradeState;
   final String deleteGradeError;
 
+  // ── Total Grades ──
+  final RequestState getTotalGradesState;
+  final String getTotalGradesError;
+  final List<CourseMemberModel> totalGradeMembers;
+  final double totalMaxDegree;
+
   const GradeState({
     this.getGradeItemsState = RequestState.initial,
     this.getGradeItemsError = '',
@@ -55,6 +62,10 @@ class GradeState extends Equatable {
     this.setGradeError = '',
     this.deleteGradeState = RequestState.initial,
     this.deleteGradeError = '',
+    this.getTotalGradesState = RequestState.initial,
+    this.getTotalGradesError = '',
+    this.totalGradeMembers = const [],
+    this.totalMaxDegree = 0,
   });
 
   GradeState copyWith({
@@ -77,6 +88,10 @@ class GradeState extends Equatable {
     String? setGradeError,
     RequestState? deleteGradeState,
     String? deleteGradeError,
+    RequestState? getTotalGradesState,
+    String? getTotalGradesError,
+    List<CourseMemberModel>? totalGradeMembers,
+    double? totalMaxDegree,
   }) {
     return GradeState(
       getGradeItemsState: getGradeItemsState ?? this.getGradeItemsState,
@@ -98,6 +113,10 @@ class GradeState extends Equatable {
       setGradeError: setGradeError ?? this.setGradeError,
       deleteGradeState: deleteGradeState ?? this.deleteGradeState,
       deleteGradeError: deleteGradeError ?? this.deleteGradeError,
+      getTotalGradesState: getTotalGradesState ?? this.getTotalGradesState,
+      getTotalGradesError: getTotalGradesError ?? this.getTotalGradesError,
+      totalGradeMembers: totalGradeMembers ?? this.totalGradeMembers,
+      totalMaxDegree: totalMaxDegree ?? this.totalMaxDegree,
     );
   }
 
@@ -116,6 +135,8 @@ class GradeState extends Equatable {
   bool get isSetGradeLoading => setGradeState == RequestState.loading;
   bool get isSetGradeSuccess => setGradeState == RequestState.loaded;
 
+  bool get isTotalGradesLoading => getTotalGradesState == RequestState.loading;
+
   @override
   List<Object?> get props => [
         getGradeItemsState, getGradeItemsError, gradeItems,
@@ -126,5 +147,6 @@ class GradeState extends Equatable {
         getMyGradesState, getMyGradesError, myGrades,
         setGradeState, setGradeError,
         deleteGradeState, deleteGradeError,
+        getTotalGradesState, getTotalGradesError, totalGradeMembers, totalMaxDegree,
       ];
 }

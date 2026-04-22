@@ -38,6 +38,7 @@ class _AppShellState extends State<AppShell> {
 
     // Load initial data — cubit methods take no userId param
     _courseCubit.getMyCourses();
+    _gradeCubit.getAllMyGrades();
     _notificationCubit.getNotifications();
     _notificationCubit.getUnreadCount();
 

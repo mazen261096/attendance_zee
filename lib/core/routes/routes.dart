@@ -22,6 +22,10 @@ class Routes {
   static String gradeItemDetailPath(String courseId, String gradeItemId) =>
       '/course/$courseId/grades/$gradeItemId';
 
+  static const String totalGrades = '/course/:courseId/total-grades';
+  static String totalGradesPath(String courseId) =>
+      '/course/$courseId/total-grades';
+
   // ── Lectures ──
   static const String createLecture = '/course/:courseId/create-lecture';
   static String createLecturePath(String courseId) =>

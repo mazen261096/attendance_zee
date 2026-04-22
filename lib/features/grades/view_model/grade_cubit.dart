@@ -2,7 +2,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/utils/enums.dart';
 import '../../../core/utils/either_extensions.dart';
 import '../../../core/utils/core_utils.dart';
+import '../../courses/data/models/course_member_model.dart';
 import '../data/grade_repository.dart';
+import '../data/models/student_grade_model.dart';
 import 'grade_state.dart';
 
 class GradeCubit extends Cubit<GradeState> {
@@ -315,6 +317,167 @@ class GradeCubit extends Cubit<GradeState> {
       emit(state.copyWith(
         deleteGradeState: RequestState.error,
         deleteGradeError: error.toString(),
+      ));
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // All My Grades (global tab)
+  // ──────────────────────────────────────────────
+
+  Future<void> getAllMyGrades() async {
+    emit(state.copyWith(
+      getMyGradesState: RequestState.loading,
+      getMyGradesError: '',
+    ));
+
+    try {
+      final result = await repository.getAllMyGrades();
+
+      result.fold(
+        (failure) => emit(state.copyWith(
+          getMyGradesState: RequestState.error,
+          getMyGradesError: failure.message,
+        )),
+        (grades) => emit(state.copyWith(
+          getMyGradesState: RequestState.loaded,
+          myGrades: grades,
+          getMyGradesError: '',
+        )),
+      );
+    } catch (error, stack) {
+      print('Error in getAllMyGrades: $error');
+      print(stack);
+      emit(state.copyWith(
+        getMyGradesState: RequestState.error,
+        getMyGradesError: error.toString(),
+      ));
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // Load Members With Grades (unified view)
+  // ──────────────────────────────────────────────
+
+  Future<void> loadMembersWithGrades({
+    required String courseId,
+    required String gradeItemId,
+  }) async {
+    emit(state.copyWith(
+      getGradesForItemState: RequestState.loading,
+      getGradesForItemError: '',
+    ));
+
+    try {
+      final membersResult =
+          await repository.getCourseMembersForGrading(courseId: courseId);
+      final gradesResult =
+          await repository.getGradesForItem(gradeItemId: gradeItemId);
+
+      final members = membersResult.fold(
+        (failure) => throw failure,
+        (data) => data,
+      );
+
+      final existingGrades = gradesResult.fold(
+        (failure) => throw failure,
+        (grades) => grades,
+      );
+
+      // Map userId -> existing grade
+      final gradeMap = <String, StudentGradeModel>{};
+      for (final grade in existingGrades) {
+        gradeMap[grade.userId] = grade;
+      }
+
+      // Build unified list: one entry per course member
+      final unified = <StudentGradeModel>[];
+      for (final member in members) {
+        final userId = member['user_id'] as String;
+        final profile = member['profiles'] as Map<String, dynamic>?;
+
+        if (gradeMap.containsKey(userId)) {
+          unified.add(gradeMap[userId]!);
+        } else {
+          // Placeholder: no grade saved yet
+          unified.add(StudentGradeModel(
+            gradeItemId: gradeItemId,
+            userId: userId,
+            degree: 0,
+            userName: profile?['name'],
+            userAvatarUrl: profile?['avatar_url'],
+          ));
+        }
+      }
+
+      emit(state.copyWith(
+        getGradesForItemState: RequestState.loaded,
+        gradesForItem: unified,
+        getGradesForItemError: '',
+      ));
+    } catch (error, stack) {
+      print('Error in loadMembersWithGrades: $error');
+      print(stack);
+      emit(state.copyWith(
+        getGradesForItemState: RequestState.error,
+        getGradesForItemError: error.toString(),
+      ));
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // Total Grades
+  // ──────────────────────────────────────────────
+
+  Future<void> getTotalGrades({required String courseId}) async {
+    emit(state.copyWith(
+      getTotalGradesState: RequestState.loading,
+      getTotalGradesError: '',
+    ));
+
+    try {
+      final results = await Future.wait([
+        repository.getTotalGrades(courseId: courseId),
+        repository.getCourseGradeItems(courseId: courseId),
+      ]);
+
+      final membersResult = results[0] as dynamic;
+      final itemsResult = results[1] as dynamic;
+
+      // Compute total max from grade items
+      double totalMax = 0;
+      itemsResult.fold(
+        (_) {},
+        (items) {
+          for (final item in items) {
+            totalMax += item.maxDegree;
+          }
+        },
+      );
+
+      membersResult.fold(
+        (failure) => emit(state.copyWith(
+          getTotalGradesState: RequestState.error,
+          getTotalGradesError: failure.message,
+        )),
+        (members) {
+          final parsed = (members as List)
+              .map((m) => CourseMemberModel.fromJson(m as Map<String, dynamic>))
+              .toList();
+          emit(state.copyWith(
+            getTotalGradesState: RequestState.loaded,
+            totalGradeMembers: parsed,
+            totalMaxDegree: totalMax,
+            getTotalGradesError: '',
+          ));
+        },
+      );
+    } catch (error, stack) {
+      print('Error in getTotalGrades: $error');
+      print(stack);
+      emit(state.copyWith(
+        getTotalGradesState: RequestState.error,
+        getTotalGradesError: error.toString(),
       ));
     }
   }

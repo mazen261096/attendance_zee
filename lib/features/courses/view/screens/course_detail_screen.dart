@@ -15,6 +15,10 @@ import '../../../../core/widgets/stats_card.dart';
 import '../../../lectures/view/widgets/lecture_card.dart';
 import '../../../lectures/view_model/lecture_cubit.dart';
 import '../../../lectures/view_model/lecture_state.dart';
+import '../../../grades/view_model/grade_cubit.dart';
+import '../../../grades/view_model/grade_state.dart';
+import '../../../grades/view/widgets/grade_card.dart';
+import '../../../grades/view/widgets/create_grade_item_sheet.dart';
 import '../../data/models/course_model.dart';
 import '../../view_model/course_cubit.dart';
 import '../../view_model/course_state.dart';
@@ -35,6 +39,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   late TabController _tabController;
   late final CourseCubit _courseCubit;
   late final LectureCubit _lectureCubit;
+  late final GradeCubit _gradeCubit;
   late final String _currentUserId;
   late bool _isAdmin;
 
@@ -45,20 +50,23 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     _isAdmin = widget.course.ownerId == _currentUserId;
 
     _tabController = TabController(
-      length: _isAdmin ? 4 : 3,
+      length: _isAdmin ? 6 : 5,
       vsync: this,
     );
 
     _courseCubit = getIt<CourseCubit>();
     _lectureCubit = getIt<LectureCubit>();
+    _gradeCubit = getIt<GradeCubit>();
 
     // Load data
     _courseCubit.getCourseMembers(courseId: widget.course.id);
     _lectureCubit.getCourseLectures(courseId: widget.course.id);
+    _courseCubit.getAttendanceSummary(courseId: widget.course.id);
     if (_isAdmin) {
       _courseCubit.getJoinRequests(courseId: widget.course.id);
     }
     _courseCubit.getCourseFiles(courseId: widget.course.id);
+    _gradeCubit.getCourseGradeItems(courseId: widget.course.id);
   }
 
   @override
@@ -66,6 +74,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     _tabController.dispose();
     _courseCubit.close();
     _lectureCubit.close();
+    _gradeCubit.close();
     super.dispose();
   }
 
@@ -78,6 +87,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       providers: [
         BlocProvider.value(value: _courseCubit),
         BlocProvider.value(value: _lectureCubit),
+        BlocProvider.value(value: _gradeCubit),
       ],
       child: Scaffold(
         appBar: AppBar(
@@ -115,6 +125,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             tabs: [
               const Tab(text: 'Lectures'),
               const Tab(text: 'Members'),
+              const Tab(text: 'Attendance'),
+              const Tab(text: 'Grades'),
               const Tab(text: 'Files'),
               if (_isAdmin) const Tab(text: 'Settings'),
             ],
@@ -125,6 +137,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           children: [
             _buildLecturesTab(context, theme, isDark),
             _buildMembersTab(context, theme, isDark),
+            _buildAttendanceTab(context, theme, isDark),
+            _buildGradesTab(context, theme, isDark),
             _buildFilesTab(context, theme, isDark),
             if (_isAdmin) _buildSettingsTab(context, theme, isDark),
           ],
@@ -283,6 +297,314 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
+  // ── Attendance Tab ──
+  Widget _buildAttendanceTab(
+      BuildContext context, ThemeData theme, bool isDark) {
+    return BlocBuilder<CourseCubit, CourseState>(
+      builder: (context, state) {
+        if (state.isGetAttendanceSummaryLoading) {
+          return const AppLoadingIndicator();
+        }
+        if (state.attendanceSummary.isEmpty) {
+          return const AppEmptyState(
+            icon: Icons.event_available_outlined,
+            title: 'No Attendance Data',
+            subtitle: 'Attendance records will appear\nhere once lectures begin',
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            _courseCubit.getAttendanceSummary(courseId: widget.course.id);
+          },
+          child: Column(
+            children: [
+              // Total lectures header
+              Container(
+                margin: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppConfig.accentColor,
+                      AppConfig.accentColor.withValues(alpha: 0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_month_rounded,
+                        color: Colors.white, size: 22),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Total Lectures',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${state.totalLectures}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Members list
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: state.attendanceSummary.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final member = state.attendanceSummary[index];
+                    final userName = member['user_name'] as String? ?? 'Unknown';
+                    final avatarUrl = member['user_avatar_url'] as String?;
+                    final attended = member['attended_count'] as int? ?? 0;
+                    final total = state.totalLectures;
+                    final percentage = total > 0
+                        ? (attended / total * 100).round()
+                        : 0;
+
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF1A1A2E)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.grey.shade200,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Avatar
+                          _buildMemberAvatar(userName, avatarUrl),
+                          const SizedBox(width: 12),
+                          // Name + percentage
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  userName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                // Progress bar
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: total > 0
+                                        ? (attended / total).clamp(0.0, 1.0)
+                                        : 0,
+                                    minHeight: 4,
+                                    backgroundColor: isDark
+                                        ? Colors.white.withValues(alpha: 0.06)
+                                        : Colors.grey.shade200,
+                                    valueColor: AlwaysStoppedAnimation(
+                                      percentage >= 75
+                                          ? AppConfig.successColor
+                                          : percentage >= 50
+                                              ? Colors.orange
+                                              : Colors.redAccent,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Count badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppConfig.accentColor
+                                  .withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$attended / $total',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppConfig.accentColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMemberAvatar(String name, String? url) {
+    if (url != null) {
+      return CircleAvatar(radius: 20, backgroundImage: NetworkImage(url));
+    }
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: AppConfig.accentColor.withValues(alpha: 0.15),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: AppConfig.accentColor,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  // ── Grades Tab ──
+  Widget _buildGradesTab(
+      BuildContext context, ThemeData theme, bool isDark) {
+    return BlocBuilder<GradeCubit, GradeState>(
+      builder: (context, state) {
+        if (state.isGetGradeItemsLoading) {
+          return const AppLoadingIndicator();
+        }
+        if (state.gradeItems.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.assessment_outlined,
+            title: 'No Grade Items',
+            subtitle: _isAdmin
+                ? 'Create grade items like exams,\nquizzes, or assignments'
+                : 'No grade items have been\nadded yet',
+            actionLabel: _isAdmin ? 'Create Item' : null,
+            onAction: _isAdmin
+                ? () => CreateGradeItemSheet.show(context, widget.course.id)
+                : null,
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            _gradeCubit.getCourseGradeItems(courseId: widget.course.id);
+          },
+          child: ListView.separated(
+            padding: const EdgeInsets.all(20),
+            itemCount: state.gradeItems.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              // First item: Total Grades card
+              if (index == 0) {
+                return _buildTotalGradesCard(context);
+              }
+
+              final item = state.gradeItems[index - 1];
+              return GradeCard(
+                name: item.name,
+                type: item.type,
+                maxDegree: item.maxDegree,
+                onTap: () => context.push(
+                  Routes.gradeItemDetailPath(widget.course.id, item.id),
+                  extra: item,
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTotalGradesCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push(Routes.totalGradesPath(widget.course.id)),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppConfig.primaryColor,
+              AppConfig.primaryColor.withValues(alpha: 0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppConfig.primaryColor.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.leaderboard_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Grades',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'View all members ranking',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white70,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Files Tab ──
   Widget _buildFilesTab(
       BuildContext context, ThemeData theme, bool isDark) {
@@ -417,28 +739,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           },
         ),
         const SizedBox(height: 24),
-        // Grades link
-        ListTile(
-          onTap: () =>
-              context.push(Routes.courseGradesPath(widget.course.id)),
-          leading: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppConfig.successColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.assessment_rounded,
-                color: AppConfig.successColor, size: 20),
-          ),
-          title: const Text('Manage Grades',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          trailing: const Icon(Icons.chevron_right_rounded),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        const SizedBox(height: 32),
         // Delete Course
         OutlinedButton.icon(
           onPressed: () => _confirmDeleteCourse(context),

@@ -57,6 +57,11 @@ abstract class BaseCourseRepository {
     required String fileName,
   });
   Future<Either<Failure, void>> deleteCourseFile({required String fileId});
+
+  // ── Attendance Summary ──
+  Future<Either<Failure, Map<String, dynamic>>> getAttendanceSummary({
+    required String courseId,
+  });
 }
 
 class CourseRepository implements BaseCourseRepository {
@@ -340,6 +345,26 @@ class CourseRepository implements BaseCourseRepository {
       return Left(e);
     } catch (e, stack) {
       print('Error in deleteCourseFile: $e');
+      print(stack);
+      return Left(SupabaseErrorMapper.mapException(e));
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // Attendance Summary
+  // ──────────────────────────────────────────────
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> getAttendanceSummary({
+    required String courseId,
+  }) async {
+    try {
+      final result = await dataSource.getAttendanceSummary(courseId: courseId);
+      return Right(result);
+    } on Failure catch (e) {
+      return Left(e);
+    } catch (e, stack) {
+      print('Error in getAttendanceSummary: $e');
       print(stack);
       return Left(SupabaseErrorMapper.mapException(e));
     }

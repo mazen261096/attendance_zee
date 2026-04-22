@@ -38,6 +38,9 @@ abstract class BaseCourseDataSource {
     required String fileName,
   });
   Future<void> deleteCourseFile({required String fileId});
+
+  // ── Attendance Summary ──
+  Future<Map<String, dynamic>> getAttendanceSummary({required String courseId});
 }
 
 class CourseDataSource implements BaseCourseDataSource {
@@ -268,5 +271,67 @@ class CourseDataSource implements BaseCourseDataSource {
   @override
   Future<void> deleteCourseFile({required String fileId}) async {
     await SupabaseService.client.from('course_files').delete().eq('id', fileId);
+  }
+
+  // ──────────────────────────────────────────────
+  // Attendance Summary
+  // ──────────────────────────────────────────────
+
+  @override
+  Future<Map<String, dynamic>> getAttendanceSummary({
+    required String courseId,
+  }) async {
+    // 1. Get all course members with profiles
+    final members = await SupabaseService.client
+        .from('course_members')
+        .select('user_id, profiles(name, avatar_url)')
+        .eq('course_id', courseId);
+
+    // 2. Get total lectures count
+    final lectures = await SupabaseService.client
+        .from('lectures')
+        .select('id')
+        .eq('course_id', courseId);
+    final totalLectures = lectures.length;
+
+    // 3. Get all attendance records for this course's lectures
+    final lectureIds = lectures.map((l) => l['id'] as String).toList();
+    List<Map<String, dynamic>> attendanceRecords = [];
+    if (lectureIds.isNotEmpty) {
+      attendanceRecords = await SupabaseService.client
+          .from('lecture_attendance')
+          .select('user_id')
+          .inFilter('lecture_id', lectureIds)
+          .eq('status', 'present');
+    }
+
+    // 4. Count attendance per member
+    final Map<String, int> attendanceCount = {};
+    for (final record in attendanceRecords) {
+      final uid = record['user_id'] as String;
+      attendanceCount[uid] = (attendanceCount[uid] ?? 0) + 1;
+    }
+
+    // 5. Build result
+    final List<Map<String, dynamic>> result = [];
+    for (final m in List<Map<String, dynamic>>.from(members)) {
+      final uid = m['user_id'] as String;
+      final profile = m['profiles'] as Map<String, dynamic>?;
+      result.add({
+        'user_id': uid,
+        'user_name': profile?['name'],
+        'user_avatar_url': profile?['avatar_url'],
+        'attended_count': attendanceCount[uid] ?? 0,
+        'total_lectures': totalLectures,
+      });
+    }
+
+    // Sort by attended_count descending
+    result.sort((a, b) => (b['attended_count'] as int).compareTo(a['attended_count'] as int));
+
+    return {
+      'members': result,
+      'total_lectures': totalLectures,
+    };
   }
 }

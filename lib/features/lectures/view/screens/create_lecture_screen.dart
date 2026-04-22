@@ -293,5 +293,5 @@ class _DateTimePicker extends StatelessWidget {
     final min = local.minute.toString().padLeft(2, '0');
     return '${months[local.month - 1]} ${local.day}, ${local.year} at $h:$min $ampm';
   }
-  
+
 }

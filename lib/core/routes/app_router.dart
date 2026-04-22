@@ -12,6 +12,7 @@ import '../../features/courses/view/screens/course_detail_screen.dart';
 import '../../features/grades/data/models/grade_item_model.dart';
 import '../../features/grades/view/screens/course_grades_screen.dart';
 import '../../features/grades/view/screens/grade_item_detail_screen.dart';
+import '../../features/grades/view/screens/total_grades_screen.dart';
 import '../../features/lectures/data/models/lecture_model.dart';
 import '../../features/lectures/view/screens/create_lecture_screen.dart';
 import '../../features/lectures/view/screens/lecture_detail_screen.dart';
@@ -89,7 +90,10 @@ class AppRouter {
       GoRoute(
         path: Routes.courseDetail,
         builder: (context, state) {
-          final course = state.extra as CourseModel;
+          final extra = state.extra;
+          final course = extra is CourseModel
+              ? extra
+              : CourseModel.fromJson(extra as Map<String, dynamic>);
           return CourseDetailScreen(course: course);
         },
       ),
@@ -105,7 +109,10 @@ class AppRouter {
       GoRoute(
         path: Routes.lectureDetail,
         builder: (context, state) {
-          final lecture = state.extra as LectureModel;
+          final extra = state.extra;
+          final lecture = extra is LectureModel
+              ? extra
+              : LectureModel.fromJson(extra as Map<String, dynamic>);
           return LectureDetailScreen(lecture: lecture);
         },
       ),
@@ -121,8 +128,18 @@ class AppRouter {
       GoRoute(
         path: Routes.gradeItemDetail,
         builder: (context, state) {
-          final gradeItem = state.extra as GradeItemModel;
+          final extra = state.extra;
+          final gradeItem = extra is GradeItemModel
+              ? extra
+              : GradeItemModel.fromJson(extra as Map<String, dynamic>);
           return GradeItemDetailScreen(gradeItem: gradeItem);
+        },
+      ),
+      GoRoute(
+        path: Routes.totalGrades,
+        builder: (context, state) {
+          final courseId = state.pathParameters['courseId']!;
+          return TotalGradesScreen(courseId: courseId);
         },
       ),
 

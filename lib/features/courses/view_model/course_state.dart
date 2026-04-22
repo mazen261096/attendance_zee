@@ -59,6 +59,12 @@ class CourseState extends Equatable {
   final RequestState deleteFileState;
   final String deleteFileError;
 
+  // ── Attendance Summary ──
+  final RequestState getAttendanceSummaryState;
+  final String getAttendanceSummaryError;
+  final List<Map<String, dynamic>> attendanceSummary;
+  final int totalLectures;
+
   const CourseState({
     this.getCoursesState = RequestState.initial,
     this.getCoursesError = '',
@@ -93,6 +99,10 @@ class CourseState extends Equatable {
     this.uploadFileError = '',
     this.deleteFileState = RequestState.initial,
     this.deleteFileError = '',
+    this.getAttendanceSummaryState = RequestState.initial,
+    this.getAttendanceSummaryError = '',
+    this.attendanceSummary = const [],
+    this.totalLectures = 0,
   });
 
   CourseState copyWith({
@@ -129,6 +139,10 @@ class CourseState extends Equatable {
     String? uploadFileError,
     RequestState? deleteFileState,
     String? deleteFileError,
+    RequestState? getAttendanceSummaryState,
+    String? getAttendanceSummaryError,
+    List<Map<String, dynamic>>? attendanceSummary,
+    int? totalLectures,
   }) {
     return CourseState(
       getCoursesState: getCoursesState ?? this.getCoursesState,
@@ -164,6 +178,10 @@ class CourseState extends Equatable {
       uploadFileError: uploadFileError ?? this.uploadFileError,
       deleteFileState: deleteFileState ?? this.deleteFileState,
       deleteFileError: deleteFileError ?? this.deleteFileError,
+      getAttendanceSummaryState: getAttendanceSummaryState ?? this.getAttendanceSummaryState,
+      getAttendanceSummaryError: getAttendanceSummaryError ?? this.getAttendanceSummaryError,
+      attendanceSummary: attendanceSummary ?? this.attendanceSummary,
+      totalLectures: totalLectures ?? this.totalLectures,
     );
   }
 
@@ -181,6 +199,7 @@ class CourseState extends Equatable {
   bool get isGetMembersLoading => getMembersState == RequestState.loading;
   bool get isGetJoinRequestsLoading => getJoinRequestsState == RequestState.loading;
   bool get isGetCourseFilesLoading => getCourseFilesState == RequestState.loading;
+  bool get isGetAttendanceSummaryLoading => getAttendanceSummaryState == RequestState.loading;
 
   @override
   List<Object?> get props => [
@@ -198,5 +217,7 @@ class CourseState extends Equatable {
         getCourseFilesState, getCourseFilesError, courseFiles,
         uploadFileState, uploadFileError,
         deleteFileState, deleteFileError,
+        getAttendanceSummaryState, getAttendanceSummaryError,
+        attendanceSummary, totalLectures,
       ];
 }

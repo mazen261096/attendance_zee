@@ -33,6 +33,7 @@ abstract class BaseGradeRepository {
   Future<Either<Failure, List<StudentGradeModel>>> getMyGrades({
     required String courseId,
   });
+  Future<Either<Failure, List<StudentGradeModel>>> getAllMyGrades();
   Future<Either<Failure, StudentGradeModel>> setStudentGrade({
     required String gradeItemId,
     required String userId,
@@ -40,6 +41,14 @@ abstract class BaseGradeRepository {
   });
   Future<Either<Failure, void>> deleteStudentGrade({
     required String gradeId,
+  });
+
+  // ── Course Members (for grading) ──
+  Future<Either<Failure, List<Map<String, dynamic>>>> getCourseMembersForGrading({
+    required String courseId,
+  });
+  Future<Either<Failure, List<Map<String, dynamic>>>> getTotalGrades({
+    required String courseId,
   });
 }
 
@@ -175,6 +184,22 @@ class GradeRepository implements BaseGradeRepository {
   }
 
   @override
+  Future<Either<Failure, List<StudentGradeModel>>> getAllMyGrades() async {
+    try {
+      final result = await dataSource.getAllMyGrades();
+      final grades =
+          result.map((e) => StudentGradeModel.fromJson(e)).toList();
+      return Right(grades);
+    } on Failure catch (e) {
+      return Left(e);
+    } catch (e, stack) {
+      print('Error in getAllMyGrades: $e');
+      print(stack);
+      return Left(SupabaseErrorMapper.mapException(e));
+    }
+  }
+
+  @override
   Future<Either<Failure, StudentGradeModel>> setStudentGrade({
     required String gradeItemId,
     required String userId,
@@ -207,6 +232,39 @@ class GradeRepository implements BaseGradeRepository {
       return Left(e);
     } catch (e, stack) {
       print('Error in deleteStudentGrade: $e');
+      print(stack);
+      return Left(SupabaseErrorMapper.mapException(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getCourseMembersForGrading({
+    required String courseId,
+  }) async {
+    try {
+      final result =
+          await dataSource.getCourseMembersForGrading(courseId: courseId);
+      return Right(result);
+    } on Failure catch (e) {
+      return Left(e);
+    } catch (e, stack) {
+      print('Error in getCourseMembersForGrading: $e');
+      print(stack);
+      return Left(SupabaseErrorMapper.mapException(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getTotalGrades({
+    required String courseId,
+  }) async {
+    try {
+      final result = await dataSource.getTotalGrades(courseId: courseId);
+      return Right(result);
+    } on Failure catch (e) {
+      return Left(e);
+    } catch (e, stack) {
+      print('Error in getTotalGrades: $e');
       print(stack);
       return Left(SupabaseErrorMapper.mapException(e));
     }

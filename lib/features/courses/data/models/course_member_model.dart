@@ -6,6 +6,7 @@ class CourseMemberModel {
   final String userId;
   final MemberRole role;
   final DateTime joinedAt;
+  final double totalDegree;
 
   /// Optional: populated when fetching with profile join
   final String? userName;
@@ -17,6 +18,7 @@ class CourseMemberModel {
     required this.userId,
     required this.role,
     required this.joinedAt,
+    this.totalDegree = 0,
     this.userName,
     this.userAvatarUrl,
   });
@@ -31,6 +33,7 @@ class CourseMemberModel {
       userId: json['user_id'],
       role: MemberRole.fromString(json['role'] ?? 'student'),
       joinedAt: DateTime.parse(json['joined_at']),
+      totalDegree: (json['total_degree'] as num?)?.toDouble() ?? 0,
       userName: profile?['name'],
       userAvatarUrl: profile?['avatar_url'],
     );
@@ -44,5 +47,7 @@ class CourseMemberModel {
         'user_id': userId,
         'role': role.name,
         'joined_at': joinedAt.toIso8601String(),
+        'total_degree': totalDegree,
       };
 }
+

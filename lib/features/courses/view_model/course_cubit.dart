@@ -521,6 +521,45 @@ class CourseCubit extends Cubit<CourseState> {
     }
   }
 
+  // ──────────────────────────────────────────────
+  // Attendance Summary
+  // ──────────────────────────────────────────────
+
+  Future<void> getAttendanceSummary({required String courseId}) async {
+    emit(state.copyWith(
+      getAttendanceSummaryState: RequestState.loading,
+      getAttendanceSummaryError: '',
+    ));
+
+    try {
+      final result = await repository.getAttendanceSummary(courseId: courseId);
+
+      result.fold(
+        (failure) => emit(state.copyWith(
+          getAttendanceSummaryState: RequestState.error,
+          getAttendanceSummaryError: failure.message,
+        )),
+        (data) {
+          final members = List<Map<String, dynamic>>.from(data['members'] ?? []);
+          final totalLectures = data['total_lectures'] as int? ?? 0;
+          emit(state.copyWith(
+            getAttendanceSummaryState: RequestState.loaded,
+            attendanceSummary: members,
+            totalLectures: totalLectures,
+            getAttendanceSummaryError: '',
+          ));
+        },
+      );
+    } catch (error, stack) {
+      print('Error in getAttendanceSummary: $error');
+      print(stack);
+      emit(state.copyWith(
+        getAttendanceSummaryState: RequestState.error,
+        getAttendanceSummaryError: error.toString(),
+      ));
+    }
+  }
+
   // ── Resets ──
   void resetCreateCourseState() {
     emit(state.copyWith(

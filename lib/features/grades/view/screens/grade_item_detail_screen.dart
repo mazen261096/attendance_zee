@@ -22,12 +22,19 @@ class GradeItemDetailScreen extends StatefulWidget {
 class _GradeItemDetailScreenState extends State<GradeItemDetailScreen> {
   late final GradeCubit _gradeCubit;
   final Map<String, TextEditingController> _controllers = {};
+  final Map<String, FocusNode> _focusNodes = {};
+
+  /// Tracks the last saved value per user to avoid redundant saves.
+  final Map<String, String> _lastSavedValues = {};
 
   @override
   void initState() {
     super.initState();
     _gradeCubit = getIt<GradeCubit>();
-    _gradeCubit.getGradesForItem(gradeItemId: widget.gradeItem.id);
+    _gradeCubit.loadMembersWithGrades(
+      courseId: widget.gradeItem.courseId,
+      gradeItemId: widget.gradeItem.id,
+    );
   }
 
   @override
@@ -35,14 +42,84 @@ class _GradeItemDetailScreenState extends State<GradeItemDetailScreen> {
     for (final c in _controllers.values) {
       c.dispose();
     }
+    for (final f in _focusNodes.values) {
+      f.dispose();
+    }
     _gradeCubit.close();
     super.dispose();
   }
 
+  void _onFocusLost(String userId) {
+    final controller = _controllers[userId];
+    if (controller == null) return;
+    _saveGrade(userId, controller.text);
+  }
+
+  void _saveGrade(String userId, String value) {
+    final trimmed = value.trim();
+    final controller = _controllers[userId];
+    final lastSaved = _lastSavedValues[userId] ?? '';
+
+    // Skip if empty — revert to original
+    if (trimmed.isEmpty) {
+      controller?.text = lastSaved;
+      return;
+    }
+
+    // If same as last saved, no action needed
+    if (lastSaved == trimmed) return;
+
+    final val = double.tryParse(trimmed);
+    if (val == null) {
+      // Invalid number — revert
+      controller?.text = lastSaved;
+      return;
+    }
+
+    // Validate max degree
+    if (val > widget.gradeItem.maxDegree) {
+      controller?.text = lastSaved;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Degree cannot exceed ${_fmt(widget.gradeItem.maxDegree)}',
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Validate negative
+    if (val < 0) {
+      controller?.text = lastSaved;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Degree cannot be negative'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    _lastSavedValues[userId] = trimmed;
+    _gradeCubit.setStudentGrade(
+      gradeItemId: widget.gradeItem.id,
+      userId: userId,
+      degree: val,
+    );
+  }
+
+  String _fmt(double n) =>
+      n == n.roundToDouble() ? n.toStringAsFixed(0) : n.toStringAsFixed(1);
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return BlocProvider.value(
       value: _gradeCubit,
@@ -67,7 +144,7 @@ class _GradeItemDetailScreenState extends State<GradeItemDetailScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                'Max: ${widget.gradeItem.maxDegree.toStringAsFixed(widget.gradeItem.maxDegree == widget.gradeItem.maxDegree.roundToDouble() ? 0 : 1)}',
+                'Max: ${_fmt(widget.gradeItem.maxDegree)}',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -77,21 +154,7 @@ class _GradeItemDetailScreenState extends State<GradeItemDetailScreen> {
             ),
           ],
         ),
-        body: BlocConsumer<GradeCubit, GradeState>(
-          listener: (context, state) {
-            if (state.isSetGradeSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Grade saved!'),
-                  backgroundColor: AppConfig.successColor,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            }
-          },
+        body: BlocBuilder<GradeCubit, GradeState>(
           builder: (context, state) {
             if (state.isGetGradesForItemLoading) {
               return const AppLoadingIndicator();
@@ -99,8 +162,8 @@ class _GradeItemDetailScreenState extends State<GradeItemDetailScreen> {
             if (state.gradesForItem.isEmpty) {
               return const AppEmptyState(
                 icon: Icons.people_outline,
-                title: 'No Student Grades',
-                subtitle: 'No students enrolled or\nno grades set yet',
+                title: 'No Members',
+                subtitle: 'No students enrolled in\nthis course yet',
               );
             }
 
@@ -110,13 +173,31 @@ class _GradeItemDetailScreenState extends State<GradeItemDetailScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final grade = state.gradesForItem[index];
+
                 // Create controller if needed
-                _controllers.putIfAbsent(
+                final controller = _controllers.putIfAbsent(
                   grade.userId,
-                  () => TextEditingController(
-                    text: grade.degree.toStringAsFixed(
-                        grade.degree == grade.degree.roundToDouble() ? 0 : 1),
-                  ),
+                  () {
+                    final text = grade.hasGrade ? _fmt(grade.degree) : '';
+                    if (text.isNotEmpty) {
+                      _lastSavedValues[grade.userId] = text;
+                    }
+                    return TextEditingController(text: text);
+                  },
+                );
+
+                // Create focus node if needed
+                final focusNode = _focusNodes.putIfAbsent(
+                  grade.userId,
+                  () {
+                    final node = FocusNode();
+                    node.addListener(() {
+                      if (!node.hasFocus) {
+                        _onFocusLost(grade.userId);
+                      }
+                    });
+                    return node;
+                  },
                 );
 
                 return Container(
@@ -132,24 +213,37 @@ class _GradeItemDetailScreenState extends State<GradeItemDetailScreen> {
                   ),
                   child: Row(
                     children: [
-                      // Avatar
                       _buildAvatar(grade.userName, grade.userAvatarUrl),
                       const SizedBox(width: 12),
-                      // Name
                       Expanded(
-                        child: Text(
-                          grade.userName ?? 'Unknown',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              grade.userName ?? 'Unknown',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            if (!grade.hasGrade)
+                              Text(
+                                'Not graded',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[500],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      // Grade input
+                      // Grade input — saves on unfocus only
                       SizedBox(
                         width: 72,
                         child: TextFormField(
-                          controller: _controllers[grade.userId],
+                          controller: controller,
+                          focusNode: focusNode,
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
                           textAlign: TextAlign.center,
@@ -157,10 +251,19 @@ class _GradeItemDetailScreenState extends State<GradeItemDetailScreen> {
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
                           ),
+                          onFieldSubmitted: (value) =>
+                              _saveGrade(grade.userId, value),
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 10),
                             isDense: true,
+                            hintText: '—',
+                            hintStyle: TextStyle(
+                              color: isDark
+                                  ? Colors.grey[600]
+                                  : Colors.grey[400],
+                              fontWeight: FontWeight.w400,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: BorderSide(
@@ -171,31 +274,6 @@ class _GradeItemDetailScreenState extends State<GradeItemDetailScreen> {
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Save
-                      IconButton(
-                        icon: state.isSetGradeLoading
-                            ? SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppConfig.successColor,
-                                ),
-                              )
-                            : const Icon(Icons.check_circle_outline,
-                                color: AppConfig.successColor),
-                        onPressed: () {
-                          final val = double.tryParse(
-                              _controllers[grade.userId]?.text ?? '');
-                          if (val == null) return;
-                          _gradeCubit.setStudentGrade(
-                            gradeItemId: widget.gradeItem.id,
-                            userId: grade.userId,
-                            degree: val,
-                          );
-                        },
                       ),
                     ],
                   ),
