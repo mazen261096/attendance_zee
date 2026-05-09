@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/routes/routes.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/notification_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -37,6 +39,11 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
       final user = SupabaseService().currentUser;
       if (user != null) {
+        // Save/refresh FCM token for already-authenticated users on cold start
+        if (!kIsWeb && AppConfig.enablePushNotifications) {
+          NotificationService().saveFCMToken(user.id);
+          NotificationService().handlePendingInitialMessage();
+        }
         context.go(Routes.home);
       } else {
         context.go(Routes.login);
@@ -53,20 +60,10 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      backgroundColor: Colors.white,
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppConfig.primaryDarkColor,
-              AppConfig.primaryColor,
-              AppConfig.primaryLightColor,
-            ],
-          ),
-        ),
         child: FadeTransition(
           opacity: _fadeAnim,
           child: ScaleTransition(
@@ -74,55 +71,19 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // App Icon
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 30,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.school_rounded,
-                    size: 54,
-                    color: AppConfig.primaryColor,
-                  ),
+                // App Logo
+                Image.asset(
+                  'assets/images/logo_attendio.png',
+                  width: 280,
+                  height: 280,
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 28),
-                // App Name
-                RichText(
-                  text: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                  ).copyWith(color: Colors.white).let((style) =>
-                    TextSpan(children: [
-                      TextSpan(
-                        text: AppConfig.appNamePart1,
-                        style: style,
-                      ),
-                      TextSpan(
-                        text: AppConfig.appNamePart2,
-                        style: style.copyWith(
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ]),
-                  ),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 Text(
                   'Smart Attendance Management',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: Colors.grey[500],
                     fontWeight: FontWeight.w400,
                     letterSpacing: 1,
                   ),
@@ -134,7 +95,7 @@ class _SplashScreenState extends State<SplashScreen>
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      Colors.white.withValues(alpha: 0.8),
+                      AppConfig.primaryColor.withValues(alpha: 0.6),
                     ),
                   ),
                 ),
@@ -145,8 +106,4 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
   }
-}
-
-extension _LetExtension<T> on T {
-  R let<R>(R Function(T) block) => block(this);
 }

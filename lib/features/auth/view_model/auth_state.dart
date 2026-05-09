@@ -9,6 +9,9 @@ class AuthState extends Equatable {
   final RequestState signUpState;
   final String signUpError;
 
+  final RequestState googleSignInState;
+  final String googleSignInError;
+
   final RequestState changePasswordState;
   final String changePasswordError;
 
@@ -23,6 +26,8 @@ class AuthState extends Equatable {
     this.signInError = '',
     this.signUpState = RequestState.initial,
     this.signUpError = '',
+    this.googleSignInState = RequestState.initial,
+    this.googleSignInError = '',
     this.changePasswordState = RequestState.initial,
     this.changePasswordError = '',
     this.resetPasswordState = RequestState.initial,
@@ -36,6 +41,8 @@ class AuthState extends Equatable {
     String? signInError,
     RequestState? signUpState,
     String? signUpError,
+    RequestState? googleSignInState,
+    String? googleSignInError,
     RequestState? changePasswordState,
     String? changePasswordError,
     RequestState? resetPasswordState,
@@ -48,6 +55,8 @@ class AuthState extends Equatable {
       signInError: signInError ?? this.signInError,
       signUpState: signUpState ?? this.signUpState,
       signUpError: signUpError ?? this.signUpError,
+      googleSignInState: googleSignInState ?? this.googleSignInState,
+      googleSignInError: googleSignInError ?? this.googleSignInError,
       changePasswordState: changePasswordState ?? this.changePasswordState,
       changePasswordError: changePasswordError ?? this.changePasswordError,
       resetPasswordState: resetPasswordState ?? this.resetPasswordState,
@@ -65,6 +74,10 @@ class AuthState extends Equatable {
   bool get isSignUpSuccess => signUpState == RequestState.loaded;
   bool get hasSignUpError => signUpState == RequestState.error;
 
+  bool get isGoogleSignInLoading => googleSignInState == RequestState.loading;
+  bool get isGoogleSignInSuccess => googleSignInState == RequestState.loaded;
+  bool get hasGoogleSignInError => googleSignInState == RequestState.error;
+
   bool get isChangePasswordLoading =>
       changePasswordState == RequestState.loading;
   bool get isChangePasswordSuccess =>
@@ -79,6 +92,7 @@ class AuthState extends Equatable {
   List<Object?> get props => [
         signInState, signInError,
         signUpState, signUpError,
+        googleSignInState, googleSignInError,
         changePasswordState, changePasswordError,
         resetPasswordState, resetPasswordError,
         user, isAuthenticated,

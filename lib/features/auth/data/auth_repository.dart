@@ -25,6 +25,7 @@ abstract class BaseAuthRepository {
   Future<bool> isAuthenticated();
   Future<UserModel?> getCurrentUser();
 
+  Future<Either<Failure, UserModel>> signInWithGoogle();
   Future<Either<Failure, void>> changePassword({required String newPassword});
   Future<Either<Failure, void>> resetPassword({required String email});
 }
@@ -192,6 +193,47 @@ class AuthRepository implements BaseAuthRepository {
       SecureStorageHelper.clearTokens(),
       SecureStorageHelper.clearUserData(),
     ]);
+  }
+
+  @override
+  Future<Either<Failure, UserModel>> signInWithGoogle() async {
+    try {
+      final response = await dataSource.signInWithGoogle();
+
+      if (response.user == null) {
+        return const Left(Failure(message: 'Google Sign-In failed.'));
+      }
+
+      final user = response.user!;
+      final userModel = UserModel(
+        id: user.id,
+        email: user.email,
+        name: user.userMetadata?['full_name'] ??
+            user.userMetadata?['name'] ??
+            user.email,
+        avatarUrl: user.userMetadata?['avatar_url'] ??
+            user.userMetadata?['picture'],
+        createdAt: user.createdAt != null
+            ? DateTime.parse(user.createdAt)
+            : DateTime.now(),
+      );
+
+      if (response.session != null) {
+        await _saveAuthData(
+          accessToken: response.session!.accessToken,
+          refreshToken: response.session!.refreshToken,
+          userData: userModel.toJson(),
+        );
+      }
+
+      return Right(userModel);
+    } on Failure catch (e) {
+      return Left(e);
+    } catch (e, stack) {
+      print('Error in signInWithGoogle: $e');
+      print(stack);
+      return Left(SupabaseErrorMapper.mapException(e));
+    }
   }
 
   @override

@@ -22,18 +22,22 @@ class NotificationUIFactory {
 
   static NotificationUIConfig getConfig(NotificationType type) {
     switch (type) {
-      case NotificationType.info:
-        return _infoConfig;
-      case NotificationType.attendance:
-        return _attendanceConfig;
-      case NotificationType.grade:
-        return _gradeConfig;
-      case NotificationType.joinRequest:
-        return _joinRequestConfig;
-      case NotificationType.lecture:
-        return _lectureConfig;
-      case NotificationType.course:
-        return _courseConfig;
+      case NotificationType.joinApproved:
+        return _joinApprovedConfig;
+      case NotificationType.newJoinRequest:
+        return _newJoinRequestConfig;
+      case NotificationType.attendanceOpen:
+        return _attendanceOpenConfig;
+      case NotificationType.attendanceClosed:
+        return _attendanceClosedConfig;
+      case NotificationType.newGradeItem:
+        return _newGradeItemConfig;
+      case NotificationType.gradeReceived:
+        return _gradeReceivedConfig;
+      case NotificationType.newCourseFile:
+        return _newCourseFileConfig;
+      case NotificationType.newLectureFile:
+        return _newLectureFileConfig;
     }
   }
 
@@ -43,46 +47,60 @@ class NotificationUIFactory {
     return getConfig(type);
   }
 
-  static final _infoConfig = NotificationUIConfig(
-    icon: Icons.info_outline_rounded,
-    getColor: (theme) => Colors.blue,
-    defaultTitle: 'Information',
-    defaultBody: 'You have a new notification',
-  );
-
-  static final _attendanceConfig = NotificationUIConfig(
-    icon: Icons.check_circle_outline_rounded,
-    getColor: (theme) => Colors.green,
-    defaultTitle: 'Attendance',
-    defaultBody: 'Attendance has been recorded',
-  );
-
-  static final _gradeConfig = NotificationUIConfig(
-    icon: Icons.grade_rounded,
-    getColor: (theme) => Colors.amber,
-    defaultTitle: 'Grade Update',
-    defaultBody: 'A new grade has been posted',
-  );
-
-  static final _joinRequestConfig = NotificationUIConfig(
+  static final _joinApprovedConfig = NotificationUIConfig(
     icon: Icons.person_add_alt_1_rounded,
-    getColor: (theme) => Colors.purple,
-    defaultTitle: 'Join Request',
-    defaultBody: 'Someone wants to join your course',
+    getColor: (_) => const Color(0xFF8B5CF6),
+    defaultTitle: 'Join Approved',
+    defaultBody: 'You have been accepted into the course',
   );
 
-  static final _lectureConfig = NotificationUIConfig(
-    icon: Icons.school_rounded,
-    getColor: (theme) => theme.primaryColor,
-    defaultTitle: 'Lecture',
-    defaultBody: 'A new lecture has been scheduled',
+  static final _newJoinRequestConfig = NotificationUIConfig(
+    icon: Icons.person_add_rounded,
+    getColor: (_) => const Color(0xFFF97316),
+    defaultTitle: 'New Join Request',
+    defaultBody: 'A student wants to join your course',
   );
 
-  static final _courseConfig = NotificationUIConfig(
-    icon: Icons.menu_book_rounded,
-    getColor: (theme) => Colors.teal,
-    defaultTitle: 'Course Update',
-    defaultBody: 'There is an update in your course',
+  static final _attendanceOpenConfig = NotificationUIConfig(
+    icon: Icons.fact_check_rounded,
+    getColor: (_) => const Color(0xFF10B981),
+    defaultTitle: 'Attendance Open',
+    defaultBody: 'Attendance is now open',
+  );
+
+  static final _attendanceClosedConfig = NotificationUIConfig(
+    icon: Icons.lock_clock_rounded,
+    getColor: (_) => const Color(0xFFEF4444),
+    defaultTitle: 'Attendance Closed',
+    defaultBody: 'Attendance has been closed',
+  );
+
+  static final _newGradeItemConfig = NotificationUIConfig(
+    icon: Icons.assignment_rounded,
+    getColor: (_) => const Color(0xFFF59E0B),
+    defaultTitle: 'New Grade Item',
+    defaultBody: 'A new exam or assignment has been added',
+  );
+
+  static final _gradeReceivedConfig = NotificationUIConfig(
+    icon: Icons.assessment_rounded,
+    getColor: (_) => const Color(0xFF06B6D4),
+    defaultTitle: 'Grade Received',
+    defaultBody: 'Your grade has been posted',
+  );
+
+  static final _newCourseFileConfig = NotificationUIConfig(
+    icon: Icons.attach_file_rounded,
+    getColor: (_) => const Color(0xFF4F46E5),
+    defaultTitle: 'New Course File',
+    defaultBody: 'A new file has been uploaded to the course',
+  );
+
+  static final _newLectureFileConfig = NotificationUIConfig(
+    icon: Icons.attach_file_rounded,
+    getColor: (_) => const Color(0xFF0EA5E9),
+    defaultTitle: 'New Lecture File',
+    defaultBody: 'A new file has been uploaded to the lecture',
   );
 
   static final _defaultConfig = NotificationUIConfig(

@@ -7,6 +7,10 @@ class NotificationState extends Equatable {
   final String getNotificationsError;
   final List<NotificationModel> notifications;
 
+  /// Pagination
+  final bool hasMore;
+  final bool isLoadingMore;
+
   final RequestState getUnreadCountState;
   final int unreadCount;
 
@@ -23,6 +27,8 @@ class NotificationState extends Equatable {
     this.getNotificationsState = RequestState.initial,
     this.getNotificationsError = '',
     this.notifications = const [],
+    this.hasMore = true,
+    this.isLoadingMore = false,
     this.getUnreadCountState = RequestState.initial,
     this.unreadCount = 0,
     this.markAsReadState = RequestState.initial,
@@ -37,6 +43,8 @@ class NotificationState extends Equatable {
     RequestState? getNotificationsState,
     String? getNotificationsError,
     List<NotificationModel>? notifications,
+    bool? hasMore,
+    bool? isLoadingMore,
     RequestState? getUnreadCountState,
     int? unreadCount,
     RequestState? markAsReadState,
@@ -52,6 +60,8 @@ class NotificationState extends Equatable {
       getNotificationsError:
           getNotificationsError ?? this.getNotificationsError,
       notifications: notifications ?? this.notifications,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       getUnreadCountState: getUnreadCountState ?? this.getUnreadCountState,
       unreadCount: unreadCount ?? this.unreadCount,
       markAsReadState: markAsReadState ?? this.markAsReadState,
@@ -81,6 +91,7 @@ class NotificationState extends Equatable {
   @override
   List<Object?> get props => [
         getNotificationsState, getNotificationsError, notifications,
+        hasMore, isLoadingMore,
         getUnreadCountState, unreadCount,
         markAsReadState, markAsReadError,
         markAllAsReadState, markAllAsReadError,

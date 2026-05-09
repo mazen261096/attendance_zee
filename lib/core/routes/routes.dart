@@ -26,6 +26,26 @@ class Routes {
   static String totalGradesPath(String courseId) =>
       '/course/$courseId/total-grades';
 
+  static const String courseLectures = '/course/:courseId/lectures';
+  static String courseLecturesPath(String courseId) =>
+      '/course/$courseId/lectures';
+
+  static const String courseMembers = '/course/:courseId/members';
+  static String courseMembersPath(String courseId) =>
+      '/course/$courseId/members';
+
+  static const String courseAttendance = '/course/:courseId/attendance';
+  static String courseAttendancePath(String courseId) =>
+      '/course/$courseId/attendance';
+
+  static const String courseFiles = '/course/:courseId/files';
+  static String courseFilesPath(String courseId) =>
+      '/course/$courseId/files';
+
+  static const String courseSettings = '/course/:courseId/settings';
+  static String courseSettingsPath(String courseId) =>
+      '/course/$courseId/settings';
+
   // ── Lectures ──
   static const String createLecture = '/course/:courseId/create-lecture';
   static String createLecturePath(String courseId) =>

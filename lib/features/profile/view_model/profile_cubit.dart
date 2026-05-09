@@ -1,6 +1,8 @@
-import 'package:flutter/foundation.dart' show ValueNotifier;
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/settings/settings_controller.dart';
 import '../../../core/utils/enums.dart';
 import '../../../core/utils/either_extensions.dart';
 import '../../../core/utils/core_utils.dart';
@@ -43,6 +45,21 @@ class ProfileCubit extends Cubit<ProfileState> {
         getProfileError: error.toString(),
       ));
     }
+  }
+
+  /// Apply profile preferences (theme + language) to SettingsController.
+  ///
+  /// Call this from a widget after [getProfile] succeeds, so we have a
+  /// valid [BuildContext] for easy_localization's `setLocale`.
+  Future<void> applyProfileSettings(BuildContext context) async {
+    final profile = state.profile;
+    if (profile == null) return;
+
+    await getIt<SettingsController>().applyFromProfile(
+      context: context,
+      preferredTheme: profile.preferredTheme,
+      preferredLanguage: profile.preferredLanguage,
+    );
   }
 
   Future<void> updateProfile({

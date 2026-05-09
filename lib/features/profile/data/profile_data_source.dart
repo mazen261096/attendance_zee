@@ -13,6 +13,8 @@ abstract class BaseProfileDataSource {
     required String profileId,
     String? name,
     String? avatarUrl,
+    String? preferredTheme,
+    String? preferredLanguage,
   });
 
   Future<String> uploadAvatar({required String userId, required XFile file});
@@ -39,11 +41,15 @@ class ProfileDataSource implements BaseProfileDataSource {
     required String profileId,
     String? name,
     String? avatarUrl,
+    String? preferredTheme,
+    String? preferredLanguage,
   }) async {
     final Map<String, dynamic> data = {};
 
     if (name != null) data['name'] = name;
     if (avatarUrl != null) data['avatar_url'] = avatarUrl;
+    if (preferredTheme != null) data['preferred_theme'] = preferredTheme;
+    if (preferredLanguage != null) data['preferred_language'] = preferredLanguage;
 
     final response = await SupabaseService.client
         .from('profiles')

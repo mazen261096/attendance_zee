@@ -8,6 +8,7 @@ import '../../../../core/services/supabase_service.dart';
 import '../../../../core/utils/enums.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_loading_indicator.dart';
+import '../../../files/view/screens/lecture_files_tab.dart';
 import '../../data/models/lecture_model.dart';
 import '../../view_model/lecture_cubit.dart';
 import '../../view_model/lecture_state.dart';
@@ -37,9 +38,7 @@ class _LectureDetailScreenState extends State<LectureDetailScreen> {
     _isAdmin = widget.lecture.createdBy == _currentUserId;
     _lecture = widget.lecture;
     _lectureCubit = getIt<LectureCubit>();
-
     _lectureCubit.getLectureAttendance(lectureId: widget.lecture.id);
-    _lectureCubit.getLectureFiles(lectureId: widget.lecture.id);
   }
 
   @override
@@ -92,7 +91,6 @@ class _LectureDetailScreenState extends State<LectureDetailScreen> {
             return RefreshIndicator(
               onRefresh: () async {
                 _lectureCubit.getLectureAttendance(lectureId: _lecture.id);
-                _lectureCubit.getLectureFiles(lectureId: _lecture.id);
               },
               child: ListView(
                 padding: const EdgeInsets.all(20),
@@ -147,64 +145,22 @@ class _LectureDetailScreenState extends State<LectureDetailScreen> {
                     ),
                   const SizedBox(height: 24),
 
-                  // ── Files Section ──
+                  // ── Files Section (R2-backed) ──
                   _buildSectionHeader(
                     theme,
                     isDark,
                     Icons.attach_file_rounded,
-                    'Files (${state.lectureFiles.length})',
+                    'Files',
                   ),
-                  const SizedBox(height: 12),
-                  if (state.isGetLectureFilesLoading)
-                    const AppLoadingIndicator(itemCount: 2)
-                  else if (state.lectureFiles.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      child: AppEmptyState(
-                        icon: Icons.folder_open_outlined,
-                        title: 'No Files',
-                        subtitle: 'No materials attached to this lecture',
-                      ),
-                    )
-                  else
-                    ...state.lectureFiles.map(
-                      (f) => ListTile(
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppConfig.accentColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.insert_drive_file_outlined,
-                            color: AppConfig.accentColor,
-                            size: 20,
-                          ),
-                        ),
-                        title: Text(
-                          f.fileName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                        trailing: _isAdmin
-                            ? IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outline,
-                                  color: AppConfig.errorColor,
-                                  size: 20,
-                                ),
-                                onPressed: () => _lectureCubit
-                                    .deleteLectureFile(fileId: f.id),
-                              )
-                            : const Icon(Icons.download_outlined, size: 20),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 420,
+                    child: LectureFilesTab(
+                      courseId: widget.lecture.courseId,
+                      lectureId: widget.lecture.id,
+                      isAdmin: _isAdmin,
                     ),
+                  ),
                   const SizedBox(height: 40),
                 ],
               ),

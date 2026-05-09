@@ -74,7 +74,7 @@ class AppTheme {
           color: AppColors.textSecondaryLight.withOpacity(0.7),
         ),
       ),
-      bottomAppBarTheme: const BottomAppBarTheme(
+      bottomAppBarTheme: const BottomAppBarThemeData(
         color: AppColors.surfaceLight,
         elevation: 10,
       ),
@@ -158,7 +158,7 @@ class AppTheme {
           color: AppColors.textSecondaryDark.withOpacity(0.7),
         ),
       ),
-      bottomAppBarTheme: const BottomAppBarTheme(
+      bottomAppBarTheme: const BottomAppBarThemeData(
         color: AppColors.surfaceDark,
         elevation: 10,
       ),

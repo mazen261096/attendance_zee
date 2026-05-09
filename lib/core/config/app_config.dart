@@ -11,10 +11,18 @@ class AppConfig {
   // ──────────────────────────────────────────────
   // App Identity
   // ──────────────────────────────────────────────
-  static const String appName = 'AttendanceZee';
-  static const String appNamePart1 = 'Attendance';
-  static const String appNamePart2 = 'Zee';
+  static const String appName = 'Attendio';
+  static const String appNamePart1 = 'Attend';
+  static const String appNamePart2 = 'io';
   static const String appVersion = '1.0.0';
+
+  // ──────────────────────────────────────────────
+  // Cloudflare File Worker
+  // ──────────────────────────────────────────────
+  /// Base URL of the deployed Cloudflare Worker.
+  /// Update this once you deploy with `wrangler deploy`.
+  static const String cloudflareWorkerUrl =
+      'https://attendance-zee-files.mazen-elgamal2610.workers.dev';
 
   // ──────────────────────────────────────────────
   // Supabase Backend
@@ -43,9 +51,19 @@ class AppConfig {
   static const String websiteUrl = 'https://attendancezee.com';
 
   // ──────────────────────────────────────────────
+  // Google Sign-In
+  // ──────────────────────────────────────────────
+  /// The WEB OAuth 2.0 Client ID from Google Cloud Console.
+  /// Used as [serverClientId] in google_sign_in to get an ID token
+  /// that Supabase accepts via signInWithIdToken.
+  /// ⚠️ Use the "Web application" client ID — NOT the Android one.
+  static const String googleWebClientId =
+      '427299576615-81eou0d8sqg3cht6pb45baqbu2un107k.apps.googleusercontent.com';
+
+  // ──────────────────────────────────────────────
   // Feature Flags
   // ──────────────────────────────────────────────
-  static const bool enableGoogleSignIn = false;
+  static const bool enableGoogleSignIn = true;
   static const bool enableAds = false;
   static const bool enablePushNotifications = true;
 

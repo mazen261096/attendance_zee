@@ -5,7 +5,10 @@ import 'notification_data_source.dart';
 import 'models/notification_model.dart';
 
 abstract class BaseNotificationRepository {
-  Future<Either<Failure, List<NotificationModel>>> getNotifications();
+  Future<Either<Failure, List<NotificationModel>>> getNotifications({
+    required int offset,
+    required int limit,
+  });
   Future<Either<Failure, int>> getUnreadCount();
   Future<Either<Failure, void>> markAsRead({required String notificationId});
   Future<Either<Failure, void>> markAllAsRead();
@@ -20,9 +23,15 @@ class NotificationRepository implements BaseNotificationRepository {
   NotificationRepository({required this.dataSource});
 
   @override
-  Future<Either<Failure, List<NotificationModel>>> getNotifications() async {
+  Future<Either<Failure, List<NotificationModel>>> getNotifications({
+    required int offset,
+    required int limit,
+  }) async {
     try {
-      final result = await dataSource.getNotifications();
+      final result = await dataSource.getNotifications(
+        offset: offset,
+        limit: limit,
+      );
       final notifications =
           result.map((e) => NotificationModel.fromJson(e)).toList();
       return Right(notifications);

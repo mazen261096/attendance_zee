@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../settings/settings_controller.dart';
 
 import '../../features/auth/data/auth_data_source.dart';
 import '../../features/auth/data/auth_repository.dart';
@@ -20,6 +21,11 @@ import '../../features/notifications/data/notification_data_source.dart';
 import '../../features/notifications/data/notification_repository.dart';
 import '../../features/notifications/view_model/notification_cubit.dart';
 import '../services/supabase_service.dart';
+import '../services/cloudflare_service.dart';
+import '../../features/files/data/file_data_source.dart';
+import '../../features/files/data/file_repository.dart';
+import '../../features/files/data/file_upload_service.dart';
+import '../../features/files/view_model/file_cubit.dart';
 
 final GetIt getIt = GetIt.instance;
 
@@ -28,8 +34,14 @@ Future<void> setupServiceLocator() async {
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerSingleton<SharedPreferences>(sharedPreferences);
 
+  // Settings
+  getIt.registerLazySingleton<SettingsController>(
+    () => SettingsController(sharedPreferences),
+  );
+
   // Services
   getIt.registerLazySingleton<SupabaseService>(() => SupabaseService());
+  getIt.registerLazySingleton<CloudflareService>(() => CloudflareService());
 
   // ── Auth Module ──
   getIt.registerLazySingleton<BaseAuthDataSource>(
@@ -88,4 +100,20 @@ Future<void> setupServiceLocator() async {
   getIt.registerFactory<NotificationCubit>(
     () => NotificationCubit(repository: getIt()),
   );
+
+  // ── Files Module ──
+  getIt.registerLazySingleton<BaseFileDataSource>(
+    () => FileDataSource(supabaseService: getIt()),
+  );
+  getIt.registerLazySingleton<FileUploadService>(
+    () => FileUploadService(cloudflareService: getIt()),
+  );
+  getIt.registerLazySingleton<BaseFileRepository>(
+    () => FileRepository(
+      dataSource: getIt(),
+      uploadService: getIt(),
+      cloudflareService: getIt(),
+    ),
+  );
+  getIt.registerFactory<FileCubit>(() => FileCubit(repository: getIt()));
 }

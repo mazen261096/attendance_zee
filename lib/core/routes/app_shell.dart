@@ -10,11 +10,17 @@ import '../../features/notifications/view_model/notification_cubit.dart';
 import '../../features/notifications/view_model/notification_state.dart';
 import '../../features/profile/view/screens/profile_tab.dart';
 import '../../features/profile/view_model/profile_cubit.dart';
+import '../../features/profile/view_model/profile_state.dart';
+import '../../core/utils/enums.dart';
 import '../di/service_locator.dart';
 import '../services/supabase_service.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
+
+  /// Set this to switch to a specific tab from outside (e.g. notification nav).
+  /// Value is auto-cleared after being consumed.
+  static final ValueNotifier<int?> pendingTabSwitch = ValueNotifier(null);
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -46,10 +52,24 @@ class _AppShellState extends State<AppShell> {
     if (userId != null) {
       _profileCubit.getProfile(profileId: userId);
     }
+
+    // Listen for external tab-switch requests (e.g. from notification nav)
+    AppShell.pendingTabSwitch.addListener(_onPendingTabSwitch);
+    // Consume any pending value set before this screen was built
+    _onPendingTabSwitch();
+  }
+
+  void _onPendingTabSwitch() {
+    final pending = AppShell.pendingTabSwitch.value;
+    if (pending != null && pending >= 0 && pending < 4) {
+      setState(() => _selectedIndex = pending);
+      AppShell.pendingTabSwitch.value = null; // consume it
+    }
   }
 
   @override
   void dispose() {
+    AppShell.pendingTabSwitch.removeListener(_onPendingTabSwitch);
     _courseCubit.close();
     _gradeCubit.close();
     _notificationCubit.close();
@@ -66,17 +86,26 @@ class _AppShellState extends State<AppShell> {
         BlocProvider.value(value: _notificationCubit),
         BlocProvider.value(value: _profileCubit),
       ],
-      child: Scaffold(
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: const [
-            CoursesTab(),
-            MyGradesTab(),
-            NotificationsTab(),
-            ProfileTab(),
-          ],
+      // Apply profile settings (theme + locale) after profile first loads
+      child: BlocListener<ProfileCubit, ProfileState>(
+        bloc: _profileCubit,
+        listenWhen: (prev, curr) =>
+            prev.getProfileState != RequestState.loaded &&
+            curr.getProfileState == RequestState.loaded,
+        listener: (ctx, _) =>
+            _profileCubit.applyProfileSettings(ctx),
+        child: Scaffold(
+          body: IndexedStack(
+            index: _selectedIndex,
+            children: const [
+              CoursesTab(),
+              MyGradesTab(),
+              NotificationsTab(),
+              ProfileTab(),
+            ],
+          ),
+          bottomNavigationBar: _buildBottomNav(),
         ),
-        bottomNavigationBar: _buildBottomNav(),
       ),
     );
   }

@@ -21,6 +21,10 @@ class NotificationTile extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final isUnread = !notification.isRead;
 
+    // Get the localized title and body
+    final title = notification.localizedTitle(context);
+    final body = notification.localizedBody(context);
+
     return Dismissible(
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
@@ -75,7 +79,7 @@ class NotificationTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            notification.title,
+                            title,
                             style: TextStyle(
                               fontWeight:
                                   isUnread ? FontWeight.w700 : FontWeight.w600,
@@ -96,10 +100,10 @@ class NotificationTile extends StatelessWidget {
                           ),
                       ],
                     ),
-                    if (notification.body != null) ...[
+                    if (body != null && body.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        notification.body!,
+                        body,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: isDark ? Colors.grey[400] : Colors.grey[600],
                           height: 1.4,
@@ -128,35 +132,43 @@ class NotificationTile extends StatelessWidget {
 
   Color _typeColor(NotificationType type) {
     switch (type) {
-      case NotificationType.attendance:
+      case NotificationType.joinApproved:
+        return const Color(0xFF8B5CF6);
+      case NotificationType.newJoinRequest:
+        return const Color(0xFFF97316);
+      case NotificationType.attendanceOpen:
         return AppConfig.successColor;
-      case NotificationType.grade:
+      case NotificationType.attendanceClosed:
+        return AppConfig.errorColor;
+      case NotificationType.newGradeItem:
         return AppConfig.warningColor;
-      case NotificationType.joinRequest:
+      case NotificationType.gradeReceived:
         return AppConfig.accentColor;
-      case NotificationType.lecture:
+      case NotificationType.newCourseFile:
         return AppConfig.primaryColor;
-      case NotificationType.course:
-        return AppConfig.primaryLightColor;
-      case NotificationType.info:
-        return Colors.grey;
+      case NotificationType.newLectureFile:
+        return const Color(0xFF0EA5E9);
     }
   }
 
   IconData _typeIcon(NotificationType type) {
     switch (type) {
-      case NotificationType.attendance:
-        return Icons.fact_check_rounded;
-      case NotificationType.grade:
-        return Icons.assessment_rounded;
-      case NotificationType.joinRequest:
+      case NotificationType.joinApproved:
+        return Icons.person_add_alt_1_rounded;
+      case NotificationType.newJoinRequest:
         return Icons.person_add_rounded;
-      case NotificationType.lecture:
-        return Icons.event_note_rounded;
-      case NotificationType.course:
-        return Icons.school_rounded;
-      case NotificationType.info:
-        return Icons.info_outline_rounded;
+      case NotificationType.attendanceOpen:
+        return Icons.fact_check_rounded;
+      case NotificationType.attendanceClosed:
+        return Icons.lock_clock_rounded;
+      case NotificationType.newGradeItem:
+        return Icons.assignment_rounded;
+      case NotificationType.gradeReceived:
+        return Icons.assessment_rounded;
+      case NotificationType.newCourseFile:
+        return Icons.attach_file_rounded;
+      case NotificationType.newLectureFile:
+        return Icons.attach_file_rounded;
     }
   }
 

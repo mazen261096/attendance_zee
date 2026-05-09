@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/utils/enums.dart';
 import '../../../core/utils/either_extensions.dart';
 import '../../../core/utils/core_utils.dart';
+import '../data/notification_data_source.dart';
 import '../data/notification_repository.dart';
 import 'notification_state.dart';
 
@@ -11,6 +12,10 @@ class NotificationCubit extends Cubit<NotificationState> {
 
   final BaseNotificationRepository repository;
 
+  /// Page size for pagination
+  static const int _pageSize = NotificationDataSource.pageSize;
+
+  /// Fetch the first page of notifications (reset)
   Future<void> getNotifications() async {
     emit(state.copyWith(
       getNotificationsState: RequestState.loading,
@@ -18,7 +23,10 @@ class NotificationCubit extends Cubit<NotificationState> {
     ));
 
     try {
-      final result = await repository.getNotifications();
+      final result = await repository.getNotifications(
+        offset: 0,
+        limit: _pageSize,
+      );
 
       result.fold(
         (failure) => emit(state.copyWith(
@@ -30,9 +38,12 @@ class NotificationCubit extends Cubit<NotificationState> {
           emit(state.copyWith(
             getNotificationsState: RequestState.loaded,
             notifications: notifications,
+            hasMore: notifications.length >= _pageSize,
             unreadCount: unread,
             getNotificationsError: '',
           ));
+          // Also fetch the true unread count from DB
+          getUnreadCount();
         },
       );
     } catch (error, stack) {
@@ -42,6 +53,35 @@ class NotificationCubit extends Cubit<NotificationState> {
         getNotificationsState: RequestState.error,
         getNotificationsError: error.toString(),
       ));
+    }
+  }
+
+  /// Load next page of notifications (pagination)
+  Future<void> loadMoreNotifications() async {
+    if (state.isLoadingMore || !state.hasMore) return;
+
+    emit(state.copyWith(isLoadingMore: true));
+
+    try {
+      final result = await repository.getNotifications(
+        offset: state.notifications.length,
+        limit: _pageSize,
+      );
+
+      result.fold(
+        (failure) => emit(state.copyWith(isLoadingMore: false)),
+        (newNotifications) {
+          emit(state.copyWith(
+            notifications: [...state.notifications, ...newNotifications],
+            hasMore: newNotifications.length >= _pageSize,
+            isLoadingMore: false,
+          ));
+        },
+      );
+    } catch (error, stack) {
+      print('Error in loadMoreNotifications: $error');
+      print(stack);
+      emit(state.copyWith(isLoadingMore: false));
     }
   }
 

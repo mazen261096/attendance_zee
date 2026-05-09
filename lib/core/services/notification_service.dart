@@ -49,7 +49,6 @@ class NotificationService {
         AppConfig.notificationChannelName,
         description: AppConfig.notificationChannelDescription,
         importance: Importance.high,
-        sound: RawResourceAndroidNotificationSound(AppConfig.notificationSoundName),
       );
 
   // Track initialization state
@@ -249,13 +248,11 @@ class NotificationService {
             icon: android?.smallIcon,
             priority: Priority.high,
             importance: Importance.high,
-            sound: RawResourceAndroidNotificationSound(AppConfig.notificationSoundName),
           ),
-          iOS: DarwinNotificationDetails(
+          iOS: const DarwinNotificationDetails(
             presentAlert: true,
             presentBadge: true,
             presentSound: true,
-            sound: '${AppConfig.notificationSoundName}.wav',
           ),
         ),
         payload: jsonEncode(message.data),

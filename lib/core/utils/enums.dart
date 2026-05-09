@@ -58,28 +58,35 @@ enum GradeItemType {
   }
 }
 
+/// Matches the DB enum: join_approved, attendance_open, attendance_closed,
+/// new_grade_item, grade_received, new_course_file, new_lecture_file, new_join_request
 enum NotificationType {
-  info,
-  attendance,
-  grade,
-  joinRequest,
-  lecture,
-  course;
+  joinApproved('join_approved'),
+  newJoinRequest('new_join_request'),
+  attendanceOpen('attendance_open'),
+  attendanceClosed('attendance_closed'),
+  newGradeItem('new_grade_item'),
+  gradeReceived('grade_received'),
+  newCourseFile('new_course_file'),
+  newLectureFile('new_lecture_file');
 
-  String get value {
-    switch (this) {
-      case NotificationType.joinRequest:
-        return 'join_request';
-      default:
-        return name;
+  final String value;
+
+  const NotificationType(this.value);
+
+  static NotificationType? tryParse(String? value) {
+    if (value == null) return null;
+    try {
+      return NotificationType.values.firstWhere((e) => e.value == value);
+    } catch (_) {
+      return null;
     }
   }
 
   static NotificationType fromString(String value) {
-    if (value == 'join_request') return NotificationType.joinRequest;
     return NotificationType.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => NotificationType.info,
+      (e) => e.value == value,
+      orElse: () => NotificationType.joinApproved,
     );
   }
 }

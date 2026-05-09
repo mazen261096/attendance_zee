@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/supabase_service.dart';
@@ -5,105 +6,123 @@ import '../services/supabase_service.dart';
 /// Manages theme and locale preferences.
 ///
 /// Priority:
-/// 1. Local storage (SharedPreferences) — fast, instant.
+/// 1. Local storage (SharedPreferences / easy_localization) — fast, instant.
 /// 2. Supabase profile — synced across devices.
 /// 3. System default — fallback when nothing is stored.
+///
+/// NOTE: Locale is owned by easy_localization. We only drive ThemeMode here.
+/// Locale changes go through `context.setLocale()` so easy_localization stays
+/// the single source of truth and handles its own persistence automatically.
 class SettingsController with ChangeNotifier {
   SettingsController(this._prefs);
 
   final SharedPreferences _prefs;
   static const String _themeKey = 'theme_mode';
-  static const String _localeKey = 'locale_code';
 
+  // ── internal state ─────────────────────────────────────────────────────────
   late ThemeMode _themeMode;
-  late Locale _locale;
 
   ThemeMode get themeMode => _themeMode;
-  Locale get locale => _locale;
 
-  /// Load settings from local storage on app startup.
-  /// If nothing is stored locally, defaults to system.
+  // ── init ───────────────────────────────────────────────────────────────────
+
+  /// Load ThemeMode from local storage on app startup.
   void loadSettings() {
-    // Load Theme
     final themeString = _prefs.getString(_themeKey);
-    if (themeString == 'light') {
-      _themeMode = ThemeMode.light;
-    } else if (themeString == 'dark') {
-      _themeMode = ThemeMode.dark;
-    } else {
-      _themeMode = ThemeMode.system; // No local preference → use system
-    }
-
-    // Load Locale
-    final localeString = _prefs.getString(_localeKey);
-    if (localeString != null) {
-      _locale = Locale(localeString);
-    } else {
-      _locale = const Locale('en'); // Default to English
-    }
-
+    _themeMode = _parseThemeMode(themeString);
     notifyListeners();
   }
 
-  /// Apply preferences from Supabase profile (called after profile load).
-  /// Only applies if NO local preference was explicitly set.
-  void applyFromProfile({String? preferredLanguage, String? preferredTheme}) {
+  // ── apply from Supabase profile ────────────────────────────────────────────
+
+  /// Called after a successful profile fetch.
+  /// Applies Supabase preferences ONLY when no local override exists.
+  ///
+  /// [context] is required to call `context.setLocale()` for easy_localization.
+  Future<void> applyFromProfile({
+    required BuildContext context,
+    String? preferredTheme,
+    String? preferredLanguage,
+  }) async {
     bool changed = false;
 
-    // Apply theme from profile if no local preference was set
+    // Theme: apply from profile only if user never overrode it locally
     if (!_prefs.containsKey(_themeKey) && preferredTheme != null) {
-      if (preferredTheme == 'light') {
-        _themeMode = ThemeMode.light;
-      } else if (preferredTheme == 'dark') {
-        _themeMode = ThemeMode.dark;
-      }
-      // Save locally so next startup is instant
-      _prefs.setString(_themeKey, preferredTheme);
+      _themeMode = _parseThemeMode(preferredTheme);
+      await _prefs.setString(_themeKey, preferredTheme);
       changed = true;
     }
 
-    // Apply locale from profile if no local preference was set
-    if (!_prefs.containsKey(_localeKey) && preferredLanguage != null) {
-      _locale = Locale(preferredLanguage);
-      _prefs.setString(_localeKey, preferredLanguage);
-      changed = true;
+    // Locale: easy_localization persists locale itself. We only override when
+    // the user has never explicitly changed it (easy_localization stores in
+    // the same SharedPreferences instance under its own key).
+    if (preferredLanguage != null && context.mounted) {
+      final easyLocKey = 'locale';
+      final hasLocalLocale = _prefs.containsKey(easyLocKey);
+      if (!hasLocalLocale) {
+        await context.setLocale(Locale(preferredLanguage));
+      }
     }
 
     if (changed) notifyListeners();
   }
 
-  /// Update theme mode — saves locally + syncs to Supabase.
+  // ── update theme ───────────────────────────────────────────────────────────
+
   Future<void> updateThemeMode(ThemeMode? newThemeMode) async {
-    if (newThemeMode == null) return;
-    if (newThemeMode == _themeMode) return;
+    if (newThemeMode == null || newThemeMode == _themeMode) return;
 
     _themeMode = newThemeMode;
     notifyListeners();
 
-    // Save locally
-    final storageValue = newThemeMode == ThemeMode.light ? 'light' : 'dark';
+    final storageValue = _themeModeToString(newThemeMode);
     await _prefs.setString(_themeKey, storageValue);
 
     // Sync to Supabase (fire-and-forget)
     _syncToSupabase(preferredTheme: storageValue);
   }
 
-  /// Update locale — saves locally + syncs to Supabase.
-  Future<void> updateLocale(Locale? newLocale) async {
-    if (newLocale == null) return;
-    if (newLocale == _locale) return;
+  // ── update locale ──────────────────────────────────────────────────────────
 
-    _locale = newLocale;
-    notifyListeners();
+  /// Changes the app locale via easy_localization AND syncs to Supabase.
+  ///
+  /// easy_localization persists the locale automatically — we just add the
+  /// Supabase sync on top.
+  Future<void> updateLocale(BuildContext context, Locale newLocale) async {
+    if (!context.mounted) return;
 
-    // Save locally
-    await _prefs.setString(_localeKey, newLocale.languageCode);
+    // easy_localization handles persistence internally
+    await context.setLocale(newLocale);
 
     // Sync to Supabase (fire-and-forget)
     _syncToSupabase(preferredLanguage: newLocale.languageCode);
   }
 
-  /// Sync preferences to Supabase profile (silent, non-blocking).
+  // ── helpers ────────────────────────────────────────────────────────────────
+
+  ThemeMode _parseThemeMode(String? value) {
+    switch (value) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  String _themeModeToString(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'light';
+      case ThemeMode.dark:
+        return 'dark';
+      default:
+        return 'system';
+    }
+  }
+
+  /// Silently syncs preferences to Supabase profile (non-blocking).
   Future<void> _syncToSupabase({
     String? preferredTheme,
     String? preferredLanguage,
@@ -125,8 +144,8 @@ class SettingsController with ChangeNotifier {
             .eq('id', currentUser.id);
       }
     } catch (e) {
-      debugPrint('Failed to sync settings to Supabase: $e');
-      // Non-critical — local settings are already saved
+      debugPrint('SettingsController: Failed to sync to Supabase: $e');
+      // Non-critical — local settings are already saved.
     }
   }
 }

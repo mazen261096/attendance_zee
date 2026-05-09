@@ -3,22 +3,49 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'core/config/app_config.dart';
 import 'core/di/service_locator.dart';
 import 'core/routes/app_router.dart';
 import 'core/services/supabase_service.dart';
+import 'core/services/notification_service.dart';
+import 'core/settings/settings_controller.dart';
+import 'features/auth/data/auth_data_source.dart';
 import 'features/auth/view_model/auth_cubit.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
 
+  // Initialize Firebase (required for FCM)
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Register background message handler (must be top-level)
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   // Initialize Supabase
   await SupabaseService().init();
 
-  // Setup DI
+  // Setup DI (registers SettingsController inside)
   await setupServiceLocator();
+
+  // Load theme from local storage immediately (before first frame)
+  getIt<SettingsController>().loadSettings();
+
+  // Initialize push notifications (permissions, foreground listeners, token refresh)
+  if (AppConfig.enablePushNotifications) {
+    await NotificationService().initialize();
+  }
+
+  // Initialize native Google Sign-In (v7 singleton must be initialized once)
+  if (AppConfig.enableGoogleSignIn) {
+    await AuthDataSource.initGoogleSignIn();
+  }
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
@@ -52,17 +79,25 @@ class AttendanceZeeApp extends StatelessWidget {
       providers: [
         BlocProvider<AuthCubit>(create: (_) => getIt<AuthCubit>()),
       ],
-      child: MaterialApp.router(
-        title: AppConfig.appName,
-        debugShowCheckedModeBanner: false,
-        scaffoldMessengerKey: AppRouter.scaffoldMessengerKey,
-        localizationsDelegates: context.localizationDelegates,
-        supportedLocales: context.supportedLocales,
-        locale: context.locale,
-        theme: _buildTheme(),
-        darkTheme: _buildDarkTheme(),
-        themeMode: ThemeMode.system,
-        routerConfig: AppRouter.router,
+      // ListenableBuilder rebuilds MaterialApp whenever ThemeMode changes
+      child: ListenableBuilder(
+        listenable: getIt<SettingsController>(),
+        builder: (context, _) {
+          return MaterialApp.router(
+            title: AppConfig.appName,
+            debugShowCheckedModeBanner: false,
+            scaffoldMessengerKey: AppRouter.scaffoldMessengerKey,
+            // Locale & delegates come entirely from easy_localization
+            localizationsDelegates: context.localizationDelegates,
+            supportedLocales: context.supportedLocales,
+            locale: context.locale,
+            theme: _buildTheme(),
+            darkTheme: _buildDarkTheme(),
+            // ThemeMode comes from SettingsController (local + Supabase synced)
+            themeMode: getIt<SettingsController>().themeMode,
+            routerConfig: AppRouter.router,
+          );
+        },
       ),
     );
   }

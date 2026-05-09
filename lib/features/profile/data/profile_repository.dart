@@ -12,6 +12,8 @@ abstract class BaseProfileRepository {
     required String profileId,
     String? name,
     String? avatarUrl,
+    String? preferredTheme,
+    String? preferredLanguage,
   });
 
   Future<Either<Failure, String>> uploadAvatar({
@@ -47,12 +49,16 @@ class ProfileRepository implements BaseProfileRepository {
     required String profileId,
     String? name,
     String? avatarUrl,
+    String? preferredTheme,
+    String? preferredLanguage,
   }) async {
     try {
       final result = await dataSource.updateProfile(
         profileId: profileId,
         name: name,
         avatarUrl: avatarUrl,
+        preferredTheme: preferredTheme,
+        preferredLanguage: preferredLanguage,
       );
       final profile = ProfileModel.fromJson(result);
       return Right(profile);

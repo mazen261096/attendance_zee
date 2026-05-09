@@ -224,4 +224,57 @@ class AuthCubit extends Cubit<AuthState> {
       changePasswordError: '',
     ));
   }
+
+  Future<void> signInWithGoogle() async {
+    emit(state.copyWith(
+      googleSignInState: RequestState.loading,
+      googleSignInError: '',
+    ));
+
+    try {
+      final result = await repository.signInWithGoogle();
+
+      result
+          .showSnackBarOnError()
+          .fold(
+            (failure) {
+              emit(state.copyWith(
+                googleSignInState: RequestState.error,
+                googleSignInError: failure.message,
+              ));
+            },
+            (user) {
+              emit(state.copyWith(
+                googleSignInState: RequestState.loaded,
+                user: user,
+                isAuthenticated: true,
+                googleSignInError: '',
+              ));
+
+              // Save FCM token after Google sign-in (mobile only)
+              if (!kIsWeb) {
+                NotificationService().saveFCMToken(user.id).catchError((e) {
+                  print('Failed to save FCM token after Google sign-in: $e');
+                });
+              }
+            },
+          );
+    } catch (error, stack) {
+      print('Error in signInWithGoogle: $error');
+      print(stack);
+      final failure = SupabaseErrorMapper.mapException(error);
+      CoreUtils.showErrorSnackBar(message: failure.message);
+      emit(state.copyWith(
+        googleSignInState: RequestState.error,
+        googleSignInError: failure.message,
+      ));
+    }
+  }
+
+  void resetGoogleSignInState() {
+    emit(state.copyWith(
+      googleSignInState: RequestState.initial,
+      googleSignInError: '',
+    ));
+  }
 }
