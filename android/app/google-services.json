@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "427299576615",
+    "project_id": "coursebyzee-95860",
+    "storage_bucket": "coursebyzee-95860.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:427299576615:android:2fd28b9016937cd86ea702",
+        "android_client_info": {
+          "package_name": "com.attendancezee.attendance_zee"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "427299576615-j2992stmeml9llfcjngthnvnujaiqofj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.attendancezee.attendance_zee",
+            "certificate_hash": "652dd22af5b23604202fe685637dbc4cc41e3bb5"
+          }
+        },
+        {
+          "client_id": "427299576615-81eou0d8sqg3cht6pb45baqbu2un107k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDI4EMOCyxE8XuYwjTLaQzpTGkB3l5RRlM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "427299576615-81eou0d8sqg3cht6pb45baqbu2un107k.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
